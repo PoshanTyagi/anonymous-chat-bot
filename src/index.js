@@ -16,7 +16,7 @@ const client = new Client({
 sequelize.sync({force: true});
 
 client.on('ready', () => {
-    console.log("Bot is Ready");
+    console.log("The bot is ready!");
 });
 
 
@@ -27,7 +27,7 @@ client.on('messageCreate', async (message) => {
     let user = (await User.findOrCreate({where: {userId: userId}, limit: 1}))[0];
 
     if (user.isBlocked === true) {
-        return await client.users.cache.get(userId).send({content: "You were blocked !!!", embeds: []});
+        return await sendMessage(userId, "You were blocked !!!");
     }
 
     if (message.content === '!new') {
@@ -40,10 +40,7 @@ client.on('messageCreate', async (message) => {
         })
 
         if (request != null) {
-            return await client.users.cache.get(userId).send({
-                content: "Please wait we are trying to match you with other users.",
-                embeds: []
-            });
+            return await sendMessage(userId, "Please wait we are trying to match you with other users.");
         }
 
         request = await Request.create({userId: userId});
@@ -72,10 +69,7 @@ client.on('messageCreate', async (message) => {
                 otherUserId = match.firstUserId;
             }
 
-            await client.users.cache.get(otherUserId).send({
-                content: "You are chat is closed.",
-                embeds: []
-            });
+            await sendMessage(otherUserId,  "You are chat is closed.");
         }
 
         return await make_match(user, request);
@@ -91,10 +85,7 @@ client.on('messageCreate', async (message) => {
         });
 
         if (match == null) {
-            return await client.users.cache.get(userId).send({
-                content: "Currently you are not match with any user. Try '!new' for new anonymous chat.",
-                embeds: []
-            });
+            return await sendMessage(userId, "Currently you are not match with any user. Try '!new' for new anonymous chat.");
         }
 
         let otherUserId;
@@ -104,10 +95,7 @@ client.on('messageCreate', async (message) => {
         else
             otherUserId = match.firstUserId;
 
-        return await client.users.cache.get(otherUserId).send({
-            content: message.content,
-            embeds: []
-        });
+        return await sendMessage(otherUserId, message.content);
     }
 });
 
@@ -122,10 +110,7 @@ const make_match = async (user, request) => {
     })
 
     if (otherRequest == null) {
-        await client.users.cache.get(user.userId).send({
-            content: "Please wait we are trying to match you with other users.",
-            embeds: []
-        });
+        await sendMessage(user.userId, "Please wait we are trying to match you with other users.");
     } else {
         await Match.create({firstUserId: user.userId, secondUserId: otherRequest.userId});
         await Request.update({isMatched: true}, {
@@ -137,16 +122,17 @@ const make_match = async (user, request) => {
             }
         });
 
-        await client.users.cache.get(user.userId).send({
-            content: "You are connected.",
-            embeds: []
-        });
-
-        await client.users.cache.get(otherRequest.userId).send({
-            content: "You are connected.",
-            embeds: []
-        });
+        await sendMessage(user.userId, "You are connected.");
+        await sendMessage(otherRequest.userId, "You are connected.");
     }
+}
+
+const sendMessage = async (userId, message) => {
+    const user = await client.users.fetch(userId);
+    return await user.send({
+        content: message,
+        embeds: []
+    });
 }
 
 client.login(process.env.TOKEN).then();
