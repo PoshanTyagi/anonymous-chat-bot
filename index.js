@@ -1,10 +1,10 @@
 require('dotenv').config();
 const Discord = require('discord.js');
 
-const {Client, Intents} = Discord;
-
 const {Op} = require('sequelize');
 const {sequelize, User, Request, Match} = require('./models');
+
+const {Client, Intents} = Discord;
 
 const client = new Client({
     intents: [Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILDS],
@@ -21,6 +21,9 @@ client.on('ready', () => {
 
 
 client.on('messageCreate', async (message) => {
+
+    if(message.author.id === client.user.id)
+        return;
 
     const userId = message.author.id;
 

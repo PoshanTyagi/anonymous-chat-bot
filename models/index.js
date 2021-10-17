@@ -1,4 +1,5 @@
 const Sequelize = require('sequelize');
+const fs = require('fs');
 const db = {};
 
 let sequelize;
@@ -12,11 +13,14 @@ if (process.env.DB_TYPE === 'POSTGRES') {
     });
 }
 
-db.User = require('./user')(sequelize, Sequelize.DataTypes);
-
-db.Request = require('./request')(sequelize, Sequelize.DataTypes);
-
-db.Match = require('./match')(sequelize, Sequelize.DataTypes);
+fs.readdirSync(__dirname)
+    .filter(function (file) {
+        return file !== 'index.js';
+    })
+    .forEach(function (file) {
+        const model = require(`./${file}`)(sequelize, Sequelize.DataTypes);
+        db[model.name] = model;
+    });
 
 db.sequelize = sequelize;
 
