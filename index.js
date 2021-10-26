@@ -1,10 +1,14 @@
 require('dotenv').config();
 const Discord = require('discord.js');
-
 const {Op} = require('sequelize');
-const {sequelize, User, Request, Match} = require('./models');
+const fs = require('fs');
+const { REST } = require('@discordjs/rest');
+const {Routes} = require('discord-api-types/v9');
 
-const {Client, Intents} = Discord;
+const {sequelize, User, Match} = require('./models');
+const {sendMessage} = require('./utils/helper.js');
+
+const {Client, Intents, Collection} = Discord;
 
 const client = new Client({
     intents: [Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILDS],
@@ -15,14 +19,64 @@ const client = new Client({
 // sequelize.sync({alter: true});
 sequelize.sync({force: true});
 
-client.on('ready', () => {
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+
+const commands = [];
+
+client.commands = new Collection();
+
+for (const file of commandFiles) {
+    const command = require(`./commands/${file}`);
+    commands.push(command.data.toJSON());
+    client.commands.set(command.data.name, command);
+}
+
+client.once('ready', () => {
     console.log("The bot is ready!");
+
+    const CLIENT_ID = client.user.id;
+    const rest = new REST({
+        version: '9'
+    }).setToken(process.env.TOKEN);
+    (async () => {
+        try {
+            if (!process.env.TEST_GUILD_ID) {
+                await rest.put(
+                    Routes.applicationCommands(CLIENT_ID), {
+                        body: commands
+                    },
+                );
+                console.log('Successfully registered application commands globally');
+            } else {
+                await rest.put(
+                    Routes.applicationGuildCommands(CLIENT_ID, process.env.TEST_GUILD_ID), {
+                        body: commands
+                    },
+                );
+                console.log('Successfully registered application commands for development guild');
+            }
+        } catch (error) {
+            if (error) console.error(error);
+        }
+    })();
+});
+
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
+    try {
+        await command.execute(client, interaction);
+    } catch (error) {
+        if (error) console.error(error);
+        await interaction.reply({content: 'There was an error while executing this command!', ephemeral: true});
+    }
 });
 
 
 client.on('messageCreate', async (message) => {
 
-    if(message.author.id === client.user.id)
+    if (message.author.id === client.user.id)
         return;
 
     const userId = message.author.id;
@@ -30,112 +84,30 @@ client.on('messageCreate', async (message) => {
     let user = (await User.findOrCreate({where: {userId: userId}, limit: 1}))[0];
 
     if (user.isBlocked === true) {
-        return await sendMessage(userId, "You were blocked !!!");
+        return await sendMessage(client, userId, "You were blocked !!!");
     }
-
-    if (message.content === '!new') {
-        let request = await Request.findOne({
-            where: {
-                userId: userId,
-                isMatched: false
-            },
-            order: [['id', 'DESC']]
-        })
-
-        if (request != null) {
-            return await sendMessage(userId, "Please wait we are trying to match you with other users.");
-        }
-
-        request = await Request.create({userId: userId});
-
-        let match = await Match.findOne({
-            where: {
-                isActive: true,
-                [Op.or]: [
-                    {firstUserId: userId},
-                    {secondUserId: userId}
-                ]
-            }
-        });
-
-        if (match != null) {
-            match.isActive = false;
-            match.closedBy = userId;
-            match.closedMethod = 'NEW';
-            await match.save();
-
-            let otherUserId;
-
-            if (match.firstUserId === userId) {
-                otherUserId = match.secondUserId;
-            } else {
-                otherUserId = match.firstUserId;
-            }
-
-            await sendMessage(otherUserId,  "You are chat is closed.");
-        }
-
-        return await make_match(user, request);
-    } else {
-        let match = await Match.findOne({
-            where: {
-                isActive: true,
-                [Op.or]: [
-                    {firstUserId: userId},
-                    {secondUserId: userId},
-                ]
-            }
-        });
-
-        if (match == null) {
-            return await sendMessage(userId, "Currently you are not match with any user. Try '!new' for new anonymous chat.");
-        }
-
-        let otherUserId;
-
-        if (match.firstUserId === userId)
-            otherUserId = match.secondUserId;
-        else
-            otherUserId = match.firstUserId;
-
-        return await sendMessage(otherUserId, message.content);
-    }
-});
-
-
-const make_match = async (user, request) => {
-    let otherRequest = await Request.findOne({
+    let match = await Match.findOne({
         where: {
-            userId: {[Op.ne]: user.userId},
-            isMatched: false
-        },
-        order: [['id', 'ASC']]
-    })
-
-    if (otherRequest == null) {
-        await sendMessage(user.userId, "Please wait we are trying to match you with other users.");
-    } else {
-        await Match.create({firstUserId: user.userId, secondUserId: otherRequest.userId});
-        await Request.update({isMatched: true}, {
-            where: {
-                [Op.or]: [
-                    {id: request.id},
-                    {id: otherRequest.id}
-                ]
-            }
-        });
-
-        await sendMessage(user.userId, "You are connected.");
-        await sendMessage(otherRequest.userId, "You are connected.");
-    }
-}
-
-const sendMessage = async (userId, message) => {
-    const user = await client.users.fetch(userId);
-    return await user.send({
-        content: message,
-        embeds: []
+            isActive: true,
+            [Op.or]: [
+                {firstUserId: userId},
+                {secondUserId: userId},
+            ]
+        }
     });
-}
+
+    if (match == null) {
+        return await sendMessage(client, userId, "Currently you are not match with any user. Try '!new' for new anonymous chat.");
+    }
+
+    let otherUserId;
+
+    if (match.firstUserId === userId)
+        otherUserId = match.secondUserId;
+    else
+        otherUserId = match.firstUserId;
+
+    return await sendMessage(client, otherUserId, message.content);
+});
 
 client.login(process.env.TOKEN).then();
