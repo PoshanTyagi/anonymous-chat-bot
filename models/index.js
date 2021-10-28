@@ -1,5 +1,5 @@
 const sequelize = require('../config/db');
-const {readdirSync} = require('fs');
+const { readdirSync } = require('fs');
 
 let db = {};
 

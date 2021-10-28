@@ -1,5 +1,5 @@
 const sequelize = require('../config/db');
-const {Model, DataTypes} = require('sequelize');
+const { Model, DataTypes } = require('sequelize');
 
 class Match extends Model {
 }
@@ -36,6 +36,6 @@ Match.init(
         tableName: 'matches',
         modelName: 'Match',
     }
-)
+);
 
 module.exports = Match;

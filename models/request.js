@@ -1,5 +1,5 @@
 const sequelize = require('../config/db');
-const {Model, DataTypes} = require('sequelize');
+const { Model, DataTypes } = require('sequelize');
 
 class Request extends Model {
 }
@@ -20,6 +20,6 @@ Request.init(
         tableName: 'requests',
         modelName: 'Request',
     }
-)
+);
 
 module.exports = Request;

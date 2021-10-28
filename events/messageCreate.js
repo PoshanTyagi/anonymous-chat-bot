@@ -1,8 +1,8 @@
 require('dotenv').config();
 const client = require('../index');
-const {User, Match} = require("../models");
-const {sendMessage} = require('../utils/helper');
-const {Op} = require("sequelize");
+const { User, Match } = require("../models");
+const { sendMessage } = require('../utils/helper');
+const { Op } = require("sequelize");
 
 module.exports = {
     data: {
@@ -16,7 +16,7 @@ module.exports = {
 
         const userId = message.author.id;
 
-        let user = (await User.findOrCreate({where: {userId: userId}, limit: 1}))[0];
+        let user = (await User.findOrCreate({ where: { userId: userId }, limit: 1 }))[0];
 
         if (user.isBlocked === true) {
             return await sendMessage(userId, "You were blocked !!!");
@@ -25,8 +25,8 @@ module.exports = {
             where: {
                 isActive: true,
                 [Op.or]: [
-                    {firstUserId: userId},
-                    {secondUserId: userId},
+                    { firstUserId: userId },
+                    { secondUserId: userId },
                 ]
             }
         });
@@ -44,4 +44,4 @@ module.exports = {
 
         return await sendMessage(otherUserId, message.content);
     }
-}
+};

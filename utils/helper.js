@@ -6,4 +6,4 @@ module.exports.sendMessage = async (userId, message) => {
         content: message,
         embeds: []
     });
-}
+};
