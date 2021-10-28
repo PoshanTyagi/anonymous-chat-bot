@@ -1,24 +1,14 @@
-const Sequelize = require('sequelize');
-const fs = require('fs');
-const db = {};
+const sequelize = require('../config/db');
+const {readdirSync} = require('fs');
 
-let sequelize;
+let db = {};
 
-if (process.env.DB_TYPE === 'POSTGRES') {
-    sequelize = new Sequelize.Sequelize(`postgres://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
-} else {
-    sequelize = new Sequelize.Sequelize({
-        dialect: 'sqlite',
-        storage: './database.sqlite'
-    });
-}
-
-fs.readdirSync(__dirname)
+readdirSync(__dirname)
     .filter(function (file) {
         return file !== 'index.js';
     })
     .forEach(function (file) {
-        const model = require(`./${file}`)(sequelize, Sequelize.DataTypes);
+        const model = require(`./${file}`);
         db[model.name] = model;
     });
 

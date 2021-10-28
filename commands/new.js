@@ -7,7 +7,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('new')
         .setDescription('Start New Random Chat'),
-    async execute(client, interaction) {
+    async execute(interaction) {
         const userId = interaction.member.user.id;
 
         let user = (await User.findOrCreate({where: {userId: userId}, limit: 1}))[0];
@@ -57,12 +57,12 @@ module.exports = {
                 otherUserId = match.firstUserId;
             }
 
-            await sendMessage(client, otherUserId, "You are chat is closed.");
+            await sendMessage(otherUserId, "You are chat is closed.");
         }
 
-        return await this.makeMatch(client, interaction, user, request);
+        return await this.makeMatch(interaction, user, request);
     },
-    async makeMatch(client, interaction, user, request) {
+    async makeMatch(interaction, user, request) {
         let otherRequest = await Request.findOne({
             where: {
                 userId: {[Op.ne]: user.userId},
@@ -87,7 +87,7 @@ module.exports = {
                 }
             });
 
-            await sendMessage(client, otherRequest.userId, "You are connected.");
+            await sendMessage(otherRequest.userId, "You are connected.");
             return await interaction.reply({content: "You are connected.", embeds: []});
         }
     }
